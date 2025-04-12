@@ -8,10 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # 查找 Boost 库
 find_package(Boost 1.82.0 REQUIRED)
 
-# 打印 Boost 库的路径信息
-message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
-message(STATUS "Boost_LIBRARIES: ${Boost_LIBRARIES}")
-message(STATUS "Boost_VERSION: ${Boost_VERSION}")
+find_package(OpenSSL REQUIRED)
+
 
 # 包含 Boost 头文件目录
 include_directories(${Boost_INCLUDE_DIRS})
@@ -22,6 +20,9 @@ file(GLOB SOURCES "src/*.cpp" "src/*.hpp")
 # 添加可执行文件
 add_executable(http_server ${SOURCES})
 
+include_directories(${OPENSSL_INCLUDE_DIR})
+target_link_libraries(http_server ${OPENSSL_LIBRARIES})
+
 # 包含项目源文件目录
 target_include_directories(http_server PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -30,7 +31,6 @@ target_compile_options(http_server PRIVATE
     -Wall
     -Wextra
     -Wpedantic
-    -Werror
 )
 
 # 设置链接选项

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <memory>
 #include <string>
 #include <functional>
@@ -28,11 +30,9 @@ public:
         std::string data(buffer, received);
         std::istringstream iss(data);
 
-        // 解析请求行
         std::string method, path, version;
         iss >> method >> path >> version;
 
-        // 对路径进行 URI 解码
         try
         {
             auto decoded = boost::urls::pct_string_view(path);
@@ -40,7 +40,6 @@ public:
         }
         catch (const std::exception &e)
         {
-            // 解码失败，返回错误
             return false;
         }
 

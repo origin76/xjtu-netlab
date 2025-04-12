@@ -17,7 +17,7 @@ void handleRequest(const HttpRequest& request, HttpResponse& response) {
 int main() {
     try {
         auto address = Address::createIPv4Address(8080, "0.0.0.0");
-        auto sock = Socket::CreateTCP(address);
+        auto sock = Socket::CreateSSL(address);
         sock->bind(address);
         sock->listen();
 

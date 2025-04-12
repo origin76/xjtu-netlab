@@ -1,11 +1,15 @@
 
 **请使用linux环境开发**
 
-all you need is 
 
 ```
 wget https://archives.boost.io/release/1.82.0/source/boost_1_82_0.tar.bz2
 ```
+
+```
+sudo apt-get install libssl-dev
+```
+
 
 ## 目标
 1、基于标准的HTTP/1.1协议（RFC 2616等），协议支持方面的要求：
@@ -39,5 +43,3 @@ B. 高级要求：
 3、服务器的高级要求是支持CGI todo
 
 + [ ] CGI（Common Gateway Interface）并不是HTTP协议的一部分，而是一个独立的标准，用于定义Web服务器如何与外部程序（如脚本或可执行文件）交互以生成动态内容。CGI的主要目的是允许Web服务器调用外部程序来处理HTTP请求并生成响应。参见RFC 3875。
-
-## 库函数
