@@ -1,6 +1,5 @@
 #include <iostream>
-#include <memory>
-#include <server.hpp>
+#include <multiserver.hpp>
 
 void handleRequest(const HttpRequest& request, HttpResponse& response) {
     std::cout << "Received request: " << request.getMethod() << " " << request.getPath() << std::endl;
@@ -22,7 +21,7 @@ int main() {
         sock->bind(address);
         sock->listen();
 
-        HttpServer server(sock);
+        MultiThreadedHttpServer server(sock, 4); // 使用 4 个线程
         server.setHandle(handleRequest);
         server.start();
 

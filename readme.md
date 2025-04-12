@@ -4,7 +4,7 @@
 all you need is 
 
 ```
-sudo apt-get install libboost-all-dev
+wget https://archives.boost.io/release/1.82.0/source/boost_1_82_0.tar.bz2
 ```
 
 ## 目标
@@ -12,7 +12,7 @@ sudo apt-get install libboost-all-dev
 
 A. 基本要求：
 + [ ]  支持GET、HEAD和POST三种请求方法
-+ [ ]  支持URI的"%HEXHEX"编码，如对 http://abc.com:80/~smith/ 和 http://ABC.com/%7Esmith/ 两种等价的URI能够正确处理；
++ [x]  支持URI的"%HEXHEX"编码，如对 http://abc.com:80/~smith/ 和 http://ABC.com/%7Esmith/ 两种等价的URI能够正确处理；
 + [ ]  正确给出应答码（如200，304，100，404，500等）；
 + [ ]  支持Connection: Keep-Alive和Connection: Close两种连接模式。
 
@@ -26,13 +26,13 @@ B. 高级要求：
 
 2、服务器的基本要求包括：
 
-+ [ ] 可配置Web服务器的监听地址、监听端口和虚拟路径。
++ [x] 可配置Web服务器的监听地址、监听端口和虚拟路径。
 
-+ [ ] 能够多线程处理并发的请求，或采取其他方法正确处理多个并发连接。
++ [x] 能够多线程处理并发的请求，或采取其他方法正确处理多个并发连接。
 
 + [ ] 对于无法成功定位文件的请求，根据错误原因，作相应错误提示。支持一定的异常情况处理能力。 
 
-+ [ ] 服务可以启动和关闭。
++ [x] 服务可以启动和关闭。
 
 + [ ] 在服务器端的日志中记录每一个请求（如IP地址、端口号和HTTP请求命令行，及应答码等）。
 
