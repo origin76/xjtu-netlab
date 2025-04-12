@@ -11,7 +11,7 @@
 #include <socket.hpp>
 #include <map>
 #include <boost/url.hpp>
-#include <boost/url/src.hpp>
+// #include <boost/url/src.hpp>
 
 class HttpRequest
 {
