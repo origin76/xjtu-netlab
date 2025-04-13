@@ -31,11 +31,16 @@ public:
     }
 
     virtual ~Socket() {
+        if (ssl) {
+            int shutdown_ret = SSL_shutdown(ssl);
+            if (shutdown_ret == 0) {
+                SSL_shutdown(ssl);
+            }
+            SSL_free(ssl);
+        }
+
         if (m_sockfd != -1) {
             ::close(m_sockfd);
-        }
-        if (ssl) {
-            SSL_free(ssl);
         }
         if (ctx) {
             SSL_CTX_free(ctx);
@@ -88,6 +93,7 @@ public:
             client->ssl = SSL_new(ctx);
             SSL_set_fd(client->ssl, sock);
             if (SSL_accept(client->ssl) <= 0) {
+                SSL_shutdown(client->ssl);
                 SSL_free(client->ssl);
                 client->ssl = nullptr;
                 ::close(sock);
