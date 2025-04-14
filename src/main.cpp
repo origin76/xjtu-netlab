@@ -60,7 +60,7 @@ int main() {
         sock->bind(address);
         sock->listen();
 
-        MultiThreadedHttpServer server(sock, 4); // 使用 4 个线程
+        MultiThreadedHttpServer server(sock, serverConfig->getThreads()); // 使用 4 个线程
         server.setHandle(handleRequest);
         server.start();
 

@@ -40,23 +40,41 @@ private:
     }
 
     void handleRequest(Socket::ptr client) {
-        HttpRequest request;
-        HttpResponse response(client);
+        while (m_isRunning) {
+            HttpRequest request;
+            HttpResponse response(client);
 
-        if (!request.parse(client)) {
-            response.setStatus(400, "Bad Request");
+            if (!request.parse(client)) {
+                response.setStatus(400, "Bad Request");
+                response.send();
+                break;
+            }
+
+            bool keepAlive = true;
+            std::string connHeader = request.getHeader("Connection");
+            std::transform(connHeader.begin(), connHeader.end(), connHeader.begin(), ::tolower);
+            if (connHeader == "close") {
+                keepAlive = false;
+            } else if (connHeader.empty()) {
+                // HTTP/1.1 默认 keep-alive，但 HTTP/1.0 默认是 close
+                keepAlive = (request.getVersion() == "HTTP/1.1");
+            }
+
+            if (m_handle) {
+                m_handle(request, response);
+            } else {
+                response.setStatus(404, "Not Found");
+            }
+
+            response.setHeader("Connection", m_keepAlive ? "keep-alive" : "close");
             response.send();
-            return;
-        }
 
-        if (m_handle) {
-            m_handle(request, response);
-        } else {
-            response.setStatus(404, "Not Found");
+            if (!keepAlive) {
+                break;
+            }
         }
-
-        response.send();
     }
+
 
     Socket::ptr m_sock;
     bool m_isRunning;

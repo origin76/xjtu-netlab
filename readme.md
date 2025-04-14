@@ -48,5 +48,9 @@ B. 高级要求：
 
 ## Usage(Tests)
 
+- Get请求：可以使用如下命令在终端中手动使用HTTP协议发送GET请求
+  ```shell
+  openssl s_client -connect 127.0.0.1:8080 
+  ``` 
 - 上传文件：许可的上传url和server端保存路径通过 [`config.ini`](./config.ini) 进行配置。
 - 转发：类似nginx的proxy_pass，尚未实现，可以通过 [`config.ini`](./config.ini) 配置前缀
