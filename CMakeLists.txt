@@ -41,13 +41,11 @@ set_target_properties(http_server PROPERTIES
 )
 
 
-add_custom_command(TARGET http_server POST_BUILD
+add_dependencies(http_server copy_resources)
+add_custom_target(copy_resources ALL
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_SOURCE_DIR}/sites
         ${CMAKE_CURRENT_BINARY_DIR}/sites
-)
-
-add_custom_command(TARGET http_server POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_SOURCE_DIR}/config.ini
         ${CMAKE_CURRENT_BINARY_DIR}/config.ini

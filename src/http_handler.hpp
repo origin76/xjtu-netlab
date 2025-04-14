@@ -111,3 +111,57 @@ void FileCacheManager::put(const std::string &path, const std::string &content) 
 void FileCacheManager::clear() {
     m_cache.clear();
 }
+
+
+class ProxyHandler : public HttpHandler {
+public:
+    explicit ProxyHandler(const std::string &targetUrl) :
+        m_targetUrl(targetUrl) {
+    }
+
+    void handle(const HttpRequest &req, HttpResponse &res) override {
+        // TODO: 实现请求转发，类似 Nginx 的 proxy_pass
+        spdlog::info("Forwarding request to {}", m_targetUrl);
+
+        // TODO: 使用类似 HTTP 客户端的逻辑去向目标地址转发请求并返回响应，这里可以使用 boost::asio 进行请求转发
+        res.setStatus(502, "Bad Gateway");
+        res.setBody("Proxy forwarding not implemented yet.");
+    }
+
+private:
+    std::string m_targetUrl;
+};
+
+
+class UploadHandler : public HttpHandler {
+public:
+    UploadHandler(const std::string &uploadPath) :
+        m_uploadPath(uploadPath) {
+        std::filesystem::create_directories(m_uploadPath);
+    }
+
+    void handle(const HttpRequest &req, HttpResponse &res) override {
+        if (req.getMethod() != "POST") {
+            res.setStatus(405, "Method Not Allowed");
+            res.setBody("Only POST method is allowed for upload.");
+            return;
+        }
+
+        std::string filename = "upload_" + std::to_string(std::time(nullptr)) + ".bin";
+        std::string fullPath = m_uploadPath + "/" + filename;
+
+        std::ofstream ofs(fullPath, std::ios::binary);
+        if (!ofs) {
+            res.setStatus(500, "Internal Server Error");
+            res.setBody("Failed to save uploaded file.");
+            return;
+        }
+
+        ofs << req.getBody();
+        res.setStatus(200, "OK");
+        res.setBody("File uploaded successfully as " + filename);
+    }
+
+private:
+    std::string m_uploadPath;
+};
