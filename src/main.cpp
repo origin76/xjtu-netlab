@@ -1,7 +1,7 @@
 #include <iostream>
 #include <multiserver.hpp>
+#include <spdlog/sinks/stdout_color_sinks.h> // 鐢ㄤ簬褰╄壊杈撳嚭
 #include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>  // 用于彩色输出
 #include "configparser.hpp"
 #include "http_handler.hpp"
 
@@ -14,25 +14,57 @@ std::string g_uploadPathPrefix;
 
 
 void handleRequest(const HttpRequest &request, HttpResponse &response) {
-    spdlog::info("Received request: {} {}", request.getMethod(), request.getPath());
+    spdlog::info("[handleRequest] Received request: {} {}", request.getMethod(), request.getPath());
+
     const std::string &path = request.getPath();
     const std::string &method = request.getMethod();
 
+    // 代理检查
     for (const auto &entry: g_proxyHandlers) {
-        spdlog::info("Proxy checking: {}",entry.first);
+        spdlog::debug("[handleRequest] Proxy checking: prefix = {}", entry.first);
         if (path.rfind(entry.first, 0) == 0) {
+            if (!entry.second) {
+                spdlog::error("[handleRequest] Proxy handler for '{}' is null!", entry.first);
+                response.setStatus(500, "Internal Server Error");
+                response.setBody("Proxy handler not available");
+                return;
+            }
+            spdlog::debug("[handleRequest] Matched proxy, handling with ProxyHandler...");
             entry.second->handle(request, response);
             return;
         }
     }
+
+    // 上传处理
     if (path.rfind(g_uploadPathPrefix, 0) == 0) {
+        spdlog::info("[handleRequest] Upload path matched, using UploadHandler...");
+        if (!g_uploadHandler) {
+            spdlog::error("[handleRequest] Upload handler is null!");
+            response.setStatus(500, "Internal Server Error");
+            response.setBody("Upload handler not available");
+            return;
+        }
         g_uploadHandler->handle(request, response);
-    } else if (method == "GET" || method == "POST" || method == "HEAD") {
-        g_staticHandler->handle(request, response);
-    } else {
-        response.setStatus(405, "Method Not Allowed");
-        response.setBody("Unsupported method");
+        return;
     }
+
+    // 静态资源处理
+    if (method == "GET" || method == "POST" || method == "HEAD") {
+        spdlog::info("[handleRequest] Handling with StaticFileHandler...");
+        if (!g_staticHandler) {
+            spdlog::error("[handleRequest] Static file handler is null!");
+            response.setStatus(500, "Internal Server Error");
+            response.setBody("Static handler not available");
+            return;
+        }
+        g_staticHandler->handle(request, response);
+        return;
+    }
+
+    // 方法不支持
+    spdlog::warn("[handleRequest] Unsupported method: {}", method);
+    response.setStatus(405, "Method Not Allowed");
+    response.setBody("Unsupported method");
 }
 
 int main() {
@@ -48,7 +80,7 @@ int main() {
         auto proxyConfig = ConfigCenter::instance().getProxyConfig();
         auto uploadConfig = ConfigCenter::instance().getUploadConfig();
 
-        g_staticHandler = std::make_shared<StaticFileHandler>(siteConfig->getRootDirectory());
+        g_staticHandler = std::make_shared<StaticFileHandler>(siteConfig->getRootDirectory(), siteConfig->getDefaultSite());
         g_uploadPathPrefix = uploadConfig->getRequestPath(); // 例如 "/upload"
         std::string uploadStoragePath = uploadConfig->getStoragePath(); // 例如 "./uploads"
         g_uploadHandler = std::make_shared<UploadHandler>(uploadStoragePath);
@@ -65,6 +97,7 @@ int main() {
         server.start();
 
         spdlog::info("Server started on port {}", serverConfig->getPort());
+        ConfigCenter::instance().printConfigInfo();
 
         std::cin.get();
         server.stop();

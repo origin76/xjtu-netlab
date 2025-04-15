@@ -26,47 +26,75 @@ public:
 
 class StaticFileHandler : public HttpHandler {
 public:
-    explicit StaticFileHandler(const std::string &root);
+    StaticFileHandler(const std::string &root, const std::string &defaultSite);
 
     void handle(const HttpRequest &req, HttpResponse &res) override;
 
 private:
     std::string m_rootPath;
+    std::string m_defaultSite;
     std::shared_ptr<FileCacheManager> m_cache;
     std::string getMimeType(const std::string &path);
 };
 
 
-StaticFileHandler::StaticFileHandler(const std::string &root) :
+StaticFileHandler::StaticFileHandler(const std::string &root, const std::string &defaultSite) :
     m_rootPath(root), m_cache(std::make_shared<FileCacheManager>()) {
+    if (defaultSite.empty() || defaultSite == "/") {
+        m_defaultSite = "/index.html";
+    } else if (defaultSite.starts_with("./")) {
+        m_defaultSite = "/" + defaultSite.substr(2);
+    } else if (!defaultSite.starts_with("/")) {
+        m_defaultSite = "/" + defaultSite;
+    } else {
+        m_defaultSite = defaultSite;
+    }
+    if (!m_rootPath.empty() && m_rootPath.back() == '/') {
+        m_rootPath.pop_back();
+    }
 }
 
 void StaticFileHandler::handle(const HttpRequest &req, HttpResponse &res) {
+    spdlog::info("[StaticFileHandler] Handling request: {} {}", req.getMethod(), req.getPath());
+
+    // 检查请求方法
     if (req.getMethod() != "GET" && req.getMethod() != "HEAD") {
+        spdlog::info("[StaticFileHandler] Method not allowed: {}", req.getMethod());
         res.setStatus(405, "Method Not Allowed");
         res.setHeader("Content-Type", "text/plain");
         res.setBody("Method Not Allowed");
         return;
     }
 
-    std::string relPath = req.getPath() == "/" ? "/index.html" : req.getPath();
+    // 计算请求的文件路径
+    std::string relPath = req.getPath() == "/" ? m_defaultSite : req.getPath();
     std::string fullPath = m_rootPath + relPath;
 
+    spdlog::info("[StaticFileHandler] Requested file path: {}", fullPath);
+
+    // 检查文件是否存在
     if (!std::filesystem::exists(fullPath) || std::filesystem::is_directory(fullPath)) {
+        spdlog::warn("[StaticFileHandler] File not found or it's a directory: {}", fullPath);
         res.setStatus(404, "Not Found");
         res.setHeader("Content-Type", "text/plain");
         res.setBody("File not found");
         return;
     }
 
+    // 尝试获取缓存
     std::optional<std::string> cached = m_cache->get(fullPath);
     std::string content;
 
     if (cached) {
+        spdlog::info("[StaticFileHandler] File found in cache: {}", fullPath);
         content = *cached;
     } else {
+        spdlog::info("[StaticFileHandler] File not in cache, reading from disk: {}", fullPath);
+
+        // 读取文件内容
         std::ifstream ifs(fullPath, std::ios::binary);
         if (!ifs) {
+            spdlog::error("[StaticFileHandler] Failed to read file: {}", fullPath);
             res.setStatus(500, "Internal Server Error");
             res.setBody("Failed to read file");
             return;
@@ -75,14 +103,22 @@ void StaticFileHandler::handle(const HttpRequest &req, HttpResponse &res) {
         std::ostringstream oss;
         oss << ifs.rdbuf();
         content = oss.str();
+
+        // 缓存文件内容
         m_cache->put(fullPath, content);
+        spdlog::info("[StaticFileHandler] File read from disk and cached: {}", fullPath);
     }
 
+    // 设置响应
     res.setStatus(200, "OK");
     res.setHeader("Content-Type", getMimeType(fullPath));
     res.setHeader("Content-Length", std::to_string(content.size()));
+
     if (req.getMethod() != "HEAD") {
+        spdlog::info("[StaticFileHandler] Sending response body.");
         res.setBody(content);
+    } else {
+        spdlog::info("[StaticFileHandler] HEAD request, no response body sent.");
     }
 }
 
