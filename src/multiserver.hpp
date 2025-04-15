@@ -8,8 +8,7 @@
 class MultiThreadedHttpServer {
 public:
     MultiThreadedHttpServer(Socket::ptr sock, size_t num_threads, bool keep_alive = true) :
-        m_sock(sock), m_isRunning(false), m_keepAlive(keep_alive), m_threadPool(num_threads) {
-    }
+        m_sock(sock), m_isRunning(false), m_keepAlive(keep_alive), m_threadPool(num_threads) {}
 
     bool start() {
         m_isRunning = true;
@@ -25,9 +24,7 @@ public:
         m_threadPool.~ThreadPool();
     }
 
-    void setHandle(HttpCallback cb) {
-        m_handle = cb;
-    }
+    void setHandle(HttpCallback cb) { m_handle = cb; }
 
 private:
     void acceptLoop() {
@@ -50,6 +47,8 @@ private:
                 break;
             }
 
+            spdlog::info("[socket] Request Addr is {}", client->getRemoteAddress()->toString());
+
             bool keepAlive = true;
             std::string connHeader = request.getHeader("Connection");
             std::transform(connHeader.begin(), connHeader.end(), connHeader.begin(), ::tolower);
@@ -58,6 +57,12 @@ private:
             } else if (connHeader.empty()) {
                 // HTTP/1.1 默认 keep-alive，但 HTTP/1.0 默认是 close
                 keepAlive = (request.getVersion() == "HTTP/1.1");
+            }
+
+            if (keepAlive){
+                if (!client->enableKeepAlive()) {
+                    std::cerr << "Failed to enable Keep-Alive" << std::endl;
+                }
             }
 
             if (m_handle) {
@@ -69,8 +74,28 @@ private:
             response.setHeader("Connection", m_keepAlive ? "keep-alive" : "close");
             response.send();
 
-            if (!keepAlive) {
-                break;
+            if (keepAlive) {
+                while (true) {
+                    spdlog::info("ip {} keepalive once",client->getRemoteAddress()->toString());
+                    if (!client->sendHeartbeat()) {
+                        break;
+                    }
+
+                    // 处理后续请求
+                    request.parse(client);
+                    if (!request.parse(client)) {
+                        break;
+                    }
+                    if (request.getHeader("Connection") != "Keep-Alive") {
+                        break;
+                    }
+                    if (m_handle) {
+                        m_handle(request, response);
+                    } else {
+                        response.setStatus(404, "Not Found");
+                    }
+                    response.send();
+                }
             }
         }
     }

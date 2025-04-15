@@ -12,6 +12,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <address.hpp>
+#include <netinet/tcp.h>
 
 class Socket : public std::enable_shared_from_this<Socket> {
 public:
@@ -135,6 +136,40 @@ public:
             return true;
         }
     }
+    
+    bool enableKeepAlive(int timeout = 60, int interval = 10, int probes = 3) {
+        // 启用 TCP Keep-Alive
+        int enable = 1;
+        if (!setsockopt(SOL_SOCKET, SO_KEEPALIVE, &enable, sizeof(enable))) {
+            return false;
+        }
+
+        // 设置 Keep-Alive 超时时间（秒）
+        if (!setsockopt(IPPROTO_TCP, TCP_KEEPIDLE, &timeout, sizeof(timeout))) {
+            return false;
+        }
+
+        // 设置 Keep-Alive 探测间隔时间（秒）
+        if (!setsockopt(IPPROTO_TCP, TCP_KEEPINTVL, &interval, sizeof(interval))) {
+            return false;
+        }
+
+        // 设置 Keep-Alive 探测次数
+        if (!setsockopt(IPPROTO_TCP, TCP_KEEPCNT, &probes, sizeof(probes))) {
+            return false;
+        }
+
+        return true;
+    }
+
+    bool sendHeartbeat() {
+        if (!ssl) {
+            return false;
+        }
+        const char* heartbeat = "";
+        int bytes_sent = SSL_write(ssl, heartbeat, strlen(heartbeat));
+        return bytes_sent != -1;
+    }
 
     int getSocket() const {
         return m_sockfd;
@@ -168,7 +203,14 @@ private:
 
     void initSock() {
         int val = 1;
-        setsockopt(m_sockfd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
+        ::setsockopt(m_sockfd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
+    }
+
+    bool setsockopt(int level, int optname, const void* optval, socklen_t optlen) {
+        if (::setsockopt(m_sockfd, level, optname, optval, optlen) == -1) {
+            return false;
+        }
+        return true;
     }
 
     bool initSSL() {
