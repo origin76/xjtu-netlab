@@ -23,7 +23,7 @@ B. 高级要求：
 
 + [x]  支持HTTPS，
 + [ ]  支持分块传输编码(Chunked Transfer Encoding)，
-+ [ ]  支持gzip等内容编码；
++ [x]  支持gzip等内容编码；
 + [x]  支持Cookie（见RFC 2109）的基本机制，实现典型的网站登录；
 + [x]  支持基本的缓存处理；
 + [x]  支持基于POST方法的文件上传。
@@ -40,9 +40,9 @@ B. 高级要求：
 
 + [x] 在服务器端的日志中记录每一个请求（如IP地址、端口号和HTTP请求命令行，及应答码等）。
 
-3、服务器的高级要求是支持CGI todo
+3、服务器的高级要求是支持CGI
 
-+ [ ] CGI（Common Gateway
++ [x] CGI（Common Gateway
   Interface）并不是HTTP协议的一部分，而是一个独立的标准，用于定义Web服务器如何与外部程序（如脚本或可执行文件）交互以生成动态内容。CGI的主要目的是允许Web服务器调用外部程序来处理HTTP请求并生成响应。参见RFC
   3875。
 
@@ -54,3 +54,4 @@ B. 高级要求：
   ``` 
 - 上传文件：许可的上传url和server端保存路径通过 [`config.ini`](./config.ini) 进行配置。
 - 转发：类似nginx的proxy_pass，尚未实现，可以通过 [`config.ini`](./config.ini) 配置前缀
+- CGI GET /cgi/1.sh

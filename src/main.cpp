@@ -4,10 +4,12 @@
 #include <spdlog/spdlog.h>
 #include "configparser.hpp"
 #include "http_handler.hpp"
+#include "cgi.hpp"
 
 
 std::shared_ptr<StaticFileHandler> g_staticHandler;
 std::shared_ptr<UploadHandler> g_uploadHandler;
+std::shared_ptr<CGIHandler> g_cgiHandler;
 std::unordered_map<std::string, std::shared_ptr<ProxyHandler>> g_proxyHandlers;
 
 std::string g_uploadPathPrefix;
@@ -33,6 +35,11 @@ void handleRequest(const HttpRequest &request, HttpResponse &response) {
             entry.second->handle(request, response);
             return;
         }
+    }
+
+    if (path.find("/cgi/") == 0) {
+        g_cgiHandler->handle(request, response);
+        return;
     }
 
     // 上传处理
@@ -82,6 +89,7 @@ int main() {
 
         g_staticHandler = std::make_shared<StaticFileHandler>(siteConfig->getRootDirectory(), siteConfig->getDefaultSite());
         g_uploadPathPrefix = uploadConfig->getRequestPath(); // 例如 "/upload"
+        g_cgiHandler = std::make_shared<CGIHandler>(siteConfig->getRootDirectory());
         std::string uploadStoragePath = uploadConfig->getStoragePath(); // 例如 "./uploads"
         g_uploadHandler = std::make_shared<UploadHandler>(uploadStoragePath);
         g_proxyHandlers = proxyConfig->getProxyMap();
