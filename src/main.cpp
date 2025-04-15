@@ -62,7 +62,7 @@ void handleRequest(const HttpRequest &request, HttpResponse &response) {
     }
 
     // 方法不支持
-    spdlog::warn("[handleRequest] Unsupported method: {}", method);
+    spdlog::warn("[handleRequest] Unsupported method: {} {}", method , method.length());
     response.setStatus(405, "Method Not Allowed");
     response.setBody("Unsupported method");
 }

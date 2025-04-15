@@ -81,7 +81,9 @@ private:
                         break;
                     }
 
-                    // 处理后续请求
+                    HttpRequest request;
+                    HttpResponse response(client);
+
                     request.parse(client);
                     if (!request.parse(client)) {
                         break;

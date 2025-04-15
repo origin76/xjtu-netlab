@@ -28,6 +28,12 @@ class StaticFileHandler : public HttpHandler {
 public:
     StaticFileHandler(const std::string &root, const std::string &defaultSite);
 
+    std::vector<std::string> splitMultipartBody(const std::string &body, const std::string &boundary);
+
+    std::vector<std::string> splitString(const std::string &str, const std::string &delimiter);
+
+    void handlePostRequest(const HttpRequest &req, HttpResponse &res);
+
     void handle(const HttpRequest &req, HttpResponse &res) override;
 
 private:
@@ -57,7 +63,6 @@ StaticFileHandler::StaticFileHandler(const std::string &root, const std::string 
 void StaticFileHandler::handle(const HttpRequest &req, HttpResponse &res) {
     spdlog::info("[StaticFileHandler] Handling request: {} {}", req.getMethod(), req.getPath());
 
-    // 检查请求方法
     if (req.getMethod() != "GET" && req.getMethod() != "HEAD") {
         spdlog::info("[StaticFileHandler] Method not allowed: {}", req.getMethod());
         res.setStatus(405, "Method Not Allowed");
@@ -112,7 +117,7 @@ void StaticFileHandler::handle(const HttpRequest &req, HttpResponse &res) {
     // 设置响应
     res.setStatus(200, "OK");
     res.setHeader("Content-Type", getMimeType(fullPath));
-    res.setHeader("Content-Length", std::to_string(content.size()));
+    // res.setHeader("Content-Length", std::to_string(content.size()));
 
     if (req.getMethod() != "HEAD") {
         spdlog::info("[StaticFileHandler] Sending response body.");
