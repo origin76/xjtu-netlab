@@ -13,6 +13,7 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include <gzip.hpp>
 // #include <boost/url/src.hpp>
 
 class HttpRequest {
@@ -115,6 +116,23 @@ private:
     }
 };
 
+bool saveStringToFile(const std::string& content, const std::string& filename) {
+    std::ofstream file(filename, std::ios::binary);
+    if (!file) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return false;
+    }
+
+    file.write(content.data(), content.size());
+    if (!file) {
+        std::cerr << "Failed to write to file: " << filename << std::endl;
+        return false;
+    }
+
+    file.close();
+    return true;
+}
+
 const std::string HttpRequest::empty_string;
 
 class HttpResponse {
@@ -131,19 +149,17 @@ public:
     void setBody(const std::string &body) { m_body = body; }
 
     void send() {
-        std::ostringstream oss;
-        oss << "HTTP/1.1 " << m_status << " " << m_reason << "\r\n";
-
-        for (const auto &header: m_headers) {
-            oss << header.first << ": " << header.second << "\r\n";
+        // 检查是否需要压缩
+        if (m_headers.find("Content-Encoding") != m_headers.end() && m_headers["Content-Encoding"] == "gzip") {
+            string compressedBody;
+            if (!GzipHandler::compress(m_body, compressedBody)) {
+                sendResponse();
+                return;
+            }
+            m_body = compressedBody;
         }
 
-        oss << "Content-Length: " << m_body.size() << "\r\n";
-        oss << "\r\n";
-        oss << m_body;
-
-        std::string response = oss.str();
-        m_sock->send(response.c_str(), response.size());
+        sendResponse();
     }
 
 private:
@@ -152,6 +168,23 @@ private:
     std::string m_reason = "OK";
     std::map<std::string, std::string> m_headers;
     std::string m_body;
+
+    void sendResponse() {
+        ostringstream oss;
+        oss << "HTTP/1.1 " << m_status << " " << m_reason << "\r\n";
+
+        for (const auto& header : m_headers) {
+            oss << header.first << ": " << header.second << "\r\n";
+        }
+
+        oss << "Content-Length: " << m_body.size() << "\r\n";
+        oss << "\r\n";
+        oss << m_body;
+
+        string response = oss.str();
+        saveStringToFile(response , "output.txt");
+        m_sock->send(response.c_str(), response.size());
+    }
 };
 
 using HttpCallback = std::function<void(const HttpRequest &, HttpResponse &)>;

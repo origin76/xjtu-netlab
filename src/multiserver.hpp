@@ -72,6 +72,11 @@ private:
             }
 
             response.setHeader("Connection", m_keepAlive ? "keep-alive" : "close");
+            std::string encoding = request.getHeader("Accept-Encoding");
+            if (encoding.find("gzip") != std::string::npos){
+                response.setHeader("Content-Encoding" , "gzip");
+            }
+
             response.send();
 
             if (keepAlive) {
