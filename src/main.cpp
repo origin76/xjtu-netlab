@@ -56,8 +56,10 @@ void handleRequest(const HttpRequest &request, HttpResponse &response) {
         }
     }
 
-    if (path.find("/chunk/" == 0)){
+    if (path.find("/chunked/") == 0){
         response.setHeader("Transfer-Encoding" , "chunked");
+    } else {
+        response.setHeader("Transfer-Encoding" , "");
     }
 
     if (path.find("/cgi/") == 0) {
