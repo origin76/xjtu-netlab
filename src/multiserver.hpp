@@ -80,7 +80,7 @@ private:
 
             response.send();
 
-            if (keepAlive) {
+            if (!keepAlive) {
                 break;
             }
         }
