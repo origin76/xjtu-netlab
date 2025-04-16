@@ -86,7 +86,6 @@ private:
         }
     }
 
-
     Socket::ptr m_sock;
     bool m_isRunning;
     bool m_keepAlive;
