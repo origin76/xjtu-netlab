@@ -4,6 +4,7 @@
 #include <condition_variable>
 #include <fstream>
 #include <functional>
+#include <gzip.hpp>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -13,7 +14,6 @@
 #include <sstream>
 #include <string>
 #include <thread>
-#include <gzip.hpp>
 // #include <boost/url/src.hpp>
 
 class HttpRequest {
@@ -74,7 +74,7 @@ public:
         return empty_string;
     }
 
-    const bool hasHeader(const std::string &key) const {
+    bool hasHeader(const std::string &key) const {
         auto it = m_headers.find(key);
         if (it != m_headers.end()) {
             return true;
@@ -153,15 +153,66 @@ bool saveStringToFile(const std::string &content, const std::string &filename) {
 
 const std::string HttpRequest::empty_string;
 
+std::string getMimeType(const std::string &path) {
+    // MIME 类型映射表
+    std::map<std::string, std::string> mimeTypes = {{".html", "text/html"},
+                                                    {".htm", "text/html"},
+                                                    {".css", "text/css"},
+                                                    {".js", "application/javascript"},
+                                                    {".json", "application/json"},
+                                                    {".png", "image/png"},
+                                                    {".jpg", "image/jpeg"},
+                                                    {".jpeg", "image/jpeg"},
+                                                    {".gif", "image/gif"},
+                                                    {".svg", "image/svg+xml"},
+                                                    {".ico", "image/x-icon"},
+                                                    {".pdf", "application/pdf"},
+                                                    {".txt", "text/plain"},
+                                                    {".xml", "application/xml"},
+                                                    {".mp3", "audio/mpeg"},
+                                                    {".wav", "audio/wav"},
+                                                    {".mp4", "video/mp4"},
+                                                    {".avi", "video/x-msvideo"},
+                                                    {".ogg", "application/ogg"},
+                                                    {".webm", "video/webm"},
+                                                    {".woff", "font/woff"},
+                                                    {".woff2", "font/woff2"},
+                                                    {".ttf", "application/x-font-ttf"},
+                                                    {".otf", "application/x-font-opentype"},
+                                                    {".eot", "application/vnd.ms-fontobject"}};
+
+    // 提取文件扩展名
+    size_t dotPos = path.find_last_of('.');
+    if (dotPos == std::string::npos) {
+        return "application/octet-stream"; // 默认 MIME 类型
+    }
+
+    std::string extension = path.substr(dotPos);
+    std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+
+    // 查找 MIME 类型
+    auto it = mimeTypes.find(extension);
+    if (it != mimeTypes.end()) {
+        return it->second;
+    }
+
+    return "application/octet-stream"; // 默认 MIME 类型
+}
+
+
 class HttpResponse {
 public:
-    HttpResponse(Socket::ptr sock) :
-        m_sock(sock) {
-    }
+    std::string m_path;
+
+    HttpResponse(Socket::ptr sock) : m_sock(sock) {}
 
     void setStatus(int status, const std::string &reason) {
         m_status = status;
         m_reason = reason;
+    }
+
+    int getStatus(){
+        return m_status;
     }
 
     void setHeader(const std::string &key, const std::string &value) { m_headers[key] = value; }
@@ -169,7 +220,12 @@ public:
     void setBody(const std::string &body) { m_body = body; }
 
     void send() {
-        // 检查是否需要压缩
+        if (m_headers.find("Transfer-Encoding") != m_headers.end() && m_headers["Transfer-Encoding"] == "chunked") {
+            spdlog::info("[Response] Chunked Transfer");
+            sendChunkedResponse();
+            return;
+        }
+
         if (m_headers.find("Content-Encoding") != m_headers.end() && m_headers["Content-Encoding"] == "gzip") {
             string compressedBody;
             if (!GzipHandler::compress(m_body, compressedBody)) {
@@ -190,6 +246,7 @@ private:
     std::string m_body;
 
     void sendResponse() {
+
         ostringstream oss;
         oss << "HTTP/1.1 " << m_status << " " << m_reason << "\r\n";
 
@@ -204,6 +261,45 @@ private:
         string response = oss.str();
         saveStringToFile(response, "output.txt");
         m_sock->send(response.c_str(), response.size());
+    }
+    void sendChunkedResponse() {
+        // 设置响应头
+        ostringstream oss;
+        oss << "HTTP/1.1 " << m_status << " " << m_reason << "\r\n";
+        oss << "Transfer-Encoding: chunked\r\n";
+        oss << "Content-Type: " << getMimeType(m_path) << "\r\n";
+        oss << "\r\n";
+
+        // 发送响应头
+        std::string responseHead = oss.str();
+        if (!m_sock->send(responseHead.c_str(), responseHead.size())) {
+            spdlog::warn("[Response] Chunked Send error");
+            return; // 发送失败，返回
+        }
+
+        size_t chunkSize = 1024; // 每块大小为 1KB
+        size_t pos = 0;
+
+        while (pos < m_body.size()) {
+            size_t end = std::min(pos + chunkSize, m_body.size());
+            std::string chunk = m_body.substr(pos, end - pos);
+    
+            std::stringstream hexStream;
+            hexStream << std::hex << chunk.size();
+    
+            std::string chunkData = hexStream.str() + "\r\n" + chunk + "\r\n";
+            if (!m_sock->send(chunkData.c_str(), chunkData.size())) {
+                return; // 发送失败，返回
+            }
+    
+            pos = end;
+        }
+
+        // 发送结束块
+        if (!m_sock->send("0\r\n\r\n", 5)) {
+            spdlog::warn("[Response] Chunked Send error");
+            return; 
+        }
     }
 };
 

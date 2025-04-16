@@ -56,6 +56,10 @@ void handleRequest(const HttpRequest &request, HttpResponse &response) {
         }
     }
 
+    if (path.find("/chunk/" == 0)){
+        response.setHeader("Transfer-Encoding" , "chunked");
+    }
+
     if (path.find("/cgi/") == 0) {
         g_cgiHandler->handle(request, response);
         return;

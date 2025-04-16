@@ -89,6 +89,7 @@ void StaticFileHandler::handle(const HttpRequest &req, HttpResponse &res) {
     // 尝试获取缓存
     std::optional<std::string> cached = m_cache->get(fullPath);
     std::string content;
+    res.m_path = fullPath;
 
     if (cached) {
         spdlog::info("[StaticFileHandler] File found in cache: {}", fullPath);

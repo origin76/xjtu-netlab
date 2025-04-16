@@ -68,8 +68,12 @@ private:
 
             if (m_handle) {
                 m_handle(request, response);
+                if(response.getStatus() == 404){
+                    keepAlive = false;
+                }
             } else {
                 response.setStatus(404, "Not Found");
+                keepAlive = false;
             }
 
             response.setHeader("Connection", m_keepAlive ? "keep-alive" : "close");
@@ -85,7 +89,6 @@ private:
             }
         }
     }
-
 
     Socket::ptr m_sock;
     bool m_isRunning;
