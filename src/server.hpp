@@ -25,8 +25,10 @@ public:
 
         // 循环接收数据，直到接收到完整的请求
         while (true) {
+            spdlog::info("[HttpRequest] parsing loop ...");
             size_t received = 0;
             if (!sock->recv(buffer, sizeof(buffer), &received)) {
+                spdlog::info("[HttpRequest] parsing failed");
                 return false;
             }
             total_received += received;
@@ -51,6 +53,8 @@ public:
         // 解析主体
         m_body = std::string(std::istreambuf_iterator<char>(iss), std::istreambuf_iterator<char>());
 
+
+        spdlog::info("[HttpRequest] parsing successful");
         return true;
     }
 
@@ -70,6 +74,14 @@ public:
         return empty_string;
     }
 
+    const bool hasHeader(const std::string &key) const {
+        auto it = m_headers.find(key);
+        if (it != m_headers.end()) {
+            return true;
+        }
+        return false;
+    }
+
     const std::string &getBody() const { return m_body; }
 
 private:
@@ -80,12 +92,14 @@ private:
     std::string m_body;
     static const std::string empty_string;
 
-    bool isRequestComplete(const std::string& data) {
+    bool isRequestComplete(const std::string &data) {
         // 检查是否包含两个连续的 CRLF，表示头部结束
+        spdlog::info("[HttpRequest] Checking Request header...");
         size_t crlfPos = data.find("\r\n\r\n");
         if (crlfPos == std::string::npos) {
             return false;
         }
+        spdlog::info("[HttpRequest] Request header accepted, waiting for body ...");
 
         // 提取头部部分
         std::string headers = data.substr(0, crlfPos);
@@ -106,17 +120,21 @@ private:
             }
         }
 
+
+        spdlog::info("[HttpRequest] Body acquired");
         // 检查请求体长度是否符合 Content-Length
         size_t bodyLength = data.size() - crlfPos - 4; // 减去 "\r\n\r\n" 的长度
-        if (contentLength > 0 && bodyLength >= contentLength) {
+        if (bodyLength >= contentLength) {
+            spdlog::info("[HttpRequest] Request finished");
             return true;
         }
+        spdlog::info("[HttpRequest] Request not finish...");
 
         return false;
     }
 };
 
-bool saveStringToFile(const std::string& content, const std::string& filename) {
+bool saveStringToFile(const std::string &content, const std::string &filename) {
     std::ofstream file(filename, std::ios::binary);
     if (!file) {
         std::cerr << "Failed to open file: " << filename << std::endl;
@@ -137,7 +155,9 @@ const std::string HttpRequest::empty_string;
 
 class HttpResponse {
 public:
-    HttpResponse(Socket::ptr sock) : m_sock(sock) {}
+    HttpResponse(Socket::ptr sock) :
+        m_sock(sock) {
+    }
 
     void setStatus(int status, const std::string &reason) {
         m_status = status;
@@ -173,7 +193,7 @@ private:
         ostringstream oss;
         oss << "HTTP/1.1 " << m_status << " " << m_reason << "\r\n";
 
-        for (const auto& header : m_headers) {
+        for (const auto &header: m_headers) {
             oss << header.first << ": " << header.second << "\r\n";
         }
 
@@ -182,7 +202,7 @@ private:
         oss << m_body;
 
         string response = oss.str();
-        saveStringToFile(response , "output.txt");
+        saveStringToFile(response, "output.txt");
         m_sock->send(response.c_str(), response.size());
     }
 };

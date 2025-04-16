@@ -2,6 +2,8 @@
 #include <map>
 #include <string>
 #include <optional>
+
+#include "configparser.hpp"
 #include "server.hpp"
 
 class CookieManager {
@@ -14,11 +16,8 @@ public:
         while (std::getline(ss, cookie, ';')) {
             size_t pos = cookie.find('=');
             if (pos != std::string::npos) {
-                std::string key = cookie.substr(0, pos);
-                std::string value = cookie.substr(pos + 1);
-                // 去掉可能的空格
-                key = trim(key);
-                value = trim(value);
+                std::string key = trim(cookie.substr(0, pos));
+                std::string value = trim(cookie.substr(pos + 1));
                 cookies[key] = value;
             }
         }
@@ -27,8 +26,16 @@ public:
     }
 
     static void setCookie(HttpResponse &res, const std::string &key, const std::string &value) {
+        auto config = ConfigCenter::instance().getCookieConfig();
+
         std::string cookie = key + "=" + value;
-        cookie += "; Max-Age=300";
+        cookie += "; Max-Age=" + std::to_string(config->getExpireTime());
+
+        const std::string &path = config->getPath();
+        if (!path.empty()) {
+            cookie += "; Path=" + path;
+        }
+
         res.setHeader("Set-Cookie", cookie);
     }
 
@@ -40,11 +47,12 @@ private:
     }
 };
 
+
 class SessionManager {
 public:
-    SessionManager() :
-        m_sessionTimeout(std::chrono::minutes(5)) {
-    } // 默认有效时间为 5 分钟
+    SessionManager()
+        : m_sessionTimeout(std::chrono::minutes(
+              ConfigCenter::instance().getSessionConfig()->getTimeoutMinutes())) {}
 
     std::string createSession() {
         std::string sessionId = generateSessionId();
@@ -66,37 +74,28 @@ public:
         return false;
     }
 
-    // 设置用户信息，存储在 session 中
     void setUser(const std::string &sid, const std::string &user) {
         m_sessions[sid].user = user;
     }
 
-    // 根据 Session ID 获取用户信息
     std::optional<std::string> getUser(const std::string &sid) {
         auto it = m_sessions.find(sid);
         if (it != m_sessions.end()) {
             return it->second.user;
         }
-        return std::nullopt; // 如果没有该 Session ID 或者用户为空
-    }
-
-    // 从 Config 中获取有效期配置，默认为 5 分钟
-    void loadConfig() {
-        // 这里暂时没有实现读取配置文件，默认有效期为 5 分钟
-        // 后期你可以从 ConfigCenter 中读取，替换这部分逻辑
+        return std::nullopt;
     }
 
 private:
     struct Session {
-        std::chrono::system_clock::time_point creationTime; // 会话创建时间
-        std::string user; // 用户信息
+        std::chrono::system_clock::time_point creationTime;
+        std::string user;
     };
 
     std::map<std::string, Session> m_sessions;
-    std::chrono::minutes m_sessionTimeout; // 会话有效期，默认5分钟
+    std::chrono::minutes m_sessionTimeout;
 
-    // 生成一个随机的 Session ID
     std::string generateSessionId() {
-        return std::to_string(std::rand()); // 简单实现，生产环境要改进
+        return std::to_string(std::rand()); // 改进空间：使用 UUID
     }
 };

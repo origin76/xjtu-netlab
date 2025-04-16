@@ -120,10 +120,10 @@ void StaticFileHandler::handle(const HttpRequest &req, HttpResponse &res) {
     // res.setHeader("Content-Length", std::to_string(content.size()));
 
     if (req.getMethod() != "HEAD") {
-        spdlog::info("[StaticFileHandler] Sending response body.");
+        spdlog::info("[StaticFileHandler] Setting response body.");
         res.setBody(content);
     } else {
-        spdlog::info("[StaticFileHandler] HEAD request, no response body sent.");
+        spdlog::info("[StaticFileHandler] HEAD request, no response body set.");
     }
 }
 

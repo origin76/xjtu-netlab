@@ -40,6 +40,7 @@ private:
         while (m_isRunning) {
             HttpRequest request;
             HttpResponse response(client);
+            spdlog::info("[MultiThreadHttpServer] Constructing request...");
 
             if (!request.parse(client)) {
                 response.setStatus(400, "Bad Request");
@@ -61,7 +62,7 @@ private:
 
             if (keepAlive){
                 if (!client->enableKeepAlive()) {
-                    std::cerr << "Failed to enable Keep-Alive" << std::endl;
+                    spdlog::error("Failed to enable Keep-Alive");
                 }
             }
 
@@ -80,29 +81,7 @@ private:
             response.send();
 
             if (keepAlive) {
-                while (true) {
-                    spdlog::info("ip {} keepalive once",client->getRemoteAddress()->toString());
-                    if (!client->sendHeartbeat()) {
-                        break;
-                    }
-
-                    HttpRequest request;
-                    HttpResponse response(client);
-
-                    request.parse(client);
-                    if (!request.parse(client)) {
-                        break;
-                    }
-                    if (request.getHeader("Connection") != "Keep-Alive") {
-                        break;
-                    }
-                    if (m_handle) {
-                        m_handle(request, response);
-                    } else {
-                        response.setStatus(404, "Not Found");
-                    }
-                    response.send();
-                }
+                break;
             }
         }
     }

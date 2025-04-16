@@ -5,18 +5,37 @@
 #include "configparser.hpp"
 #include "http_handler.hpp"
 #include "cgi.hpp"
+#include "cookiemanager.hpp"
 
 
 std::shared_ptr<StaticFileHandler> g_staticHandler;
 std::shared_ptr<UploadHandler> g_uploadHandler;
 std::shared_ptr<CGIHandler> g_cgiHandler;
 std::unordered_map<std::string, std::shared_ptr<ProxyHandler>> g_proxyHandlers;
+std::shared_ptr<SessionManager> g_sessionManager;
+
 
 std::string g_uploadPathPrefix;
 
 
 void handleRequest(const HttpRequest &request, HttpResponse &response) {
     spdlog::info("[handleRequest] Received request: {} {}", request.getMethod(), request.getPath());
+
+    std::map<std::string, std::string> cookies;
+    if (request.hasHeader("Cookie")) {
+        cookies = CookieManager::parseCookies(request.getHeader("Cookie"));
+    }
+
+    std::string sid;
+    if (cookies.count("sid") > 0 && g_sessionManager->validateSession(cookies["sid"])) {
+        sid = cookies["sid"];
+        spdlog::debug("[handleRequest] Existing valid session id: {}", sid);
+    } else {
+        sid = g_sessionManager->createSession();
+        CookieManager::setCookie(response, "sid", sid);
+        spdlog::debug("[handleRequest] New session created: {}", sid);
+    }
+
 
     const std::string &path = request.getPath();
     const std::string &method = request.getMethod();
@@ -69,7 +88,7 @@ void handleRequest(const HttpRequest &request, HttpResponse &response) {
     }
 
     // 方法不支持
-    spdlog::warn("[handleRequest] Unsupported method: {} {}", method , method.length());
+    spdlog::warn("[handleRequest] Unsupported method: {} {}", method, method.length());
     response.setStatus(405, "Method Not Allowed");
     response.setBody("Unsupported method");
 }
@@ -93,6 +112,7 @@ int main() {
         std::string uploadStoragePath = uploadConfig->getStoragePath(); // 例如 "./uploads"
         g_uploadHandler = std::make_shared<UploadHandler>(uploadStoragePath);
         g_proxyHandlers = proxyConfig->getProxyMap();
+        g_sessionManager = std::make_shared<SessionManager>();
 
 
         auto address = Address::createIPv4Address(serverConfig->getPort(), serverConfig->getAllowedIps());
