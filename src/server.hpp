@@ -211,6 +211,10 @@ public:
         m_reason = reason;
     }
 
+    int getStatus(){
+        return m_status;
+    }
+
     void setHeader(const std::string &key, const std::string &value) { m_headers[key] = value; }
 
     void setBody(const std::string &body) { m_body = body; }
