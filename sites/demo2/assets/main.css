@@ -1,0 +1,10 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    /* 隐藏滚动条 */
+}
+
+#canvas {
+    height: 100vh;
+    width: 100vw;
+}
