@@ -22,7 +22,7 @@ A. 基本要求：
 B. 高级要求：
 
 + [x]  支持HTTPS，
-+ [ ]  支持分块传输编码(Chunked Transfer Encoding)，
++ [x]  支持分块传输编码(Chunked Transfer Encoding)，
 + [x]  支持gzip等内容编码；
 + [x]  支持Cookie（见RFC 2109）的基本机制，实现典型的网站登录；
 + [x]  支持基本的缓存处理；

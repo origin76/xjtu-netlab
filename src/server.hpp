@@ -46,6 +46,17 @@ public:
         std::string method, path, version;
         iss >> method >> path >> version;
 
+        try
+        {
+            auto decoded = boost::urls::pct_string_view(path);
+            path = decoded.decode();
+        }
+        catch (const std::exception &e)
+        {
+            // 解码失败，返回错误
+            return false;
+        }
+
         m_method = method;
         m_path = path;
         m_version = version;

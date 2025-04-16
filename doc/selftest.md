@@ -40,7 +40,6 @@
 GET请求：
 ![image.png](https://s2.loli.net/2025/04/16/dUL3a5XDqiGvHzY.png)
 
-
 POST请求：
 ![image.png](https://s2.loli.net/2025/04/16/1btUwAKupIPRqDN.png)
 
@@ -48,3 +47,23 @@ HEAD请求：
 ![image.png](https://s2.loli.net/2025/04/16/BFJ2TgIHO6A8uSR.png)
 
 #### 
+=======
+#### 支持gzip等内容编码,支持https
+
+![alt text](image.png)
+
+#### 支持URI的%HEX编码
+
+![alt text](image-1.png)
+
+![alt text](image-2.png)
+
+#### 支持分块传输编码
+
+![alt text](image-3.png)
+
+#### 支持CGI
+
+![alt text](image-4.png)
+
+![alt text](image-5.png)
